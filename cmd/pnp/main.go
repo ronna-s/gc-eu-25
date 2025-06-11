@@ -7,7 +7,7 @@ import (
 
 func main() {
 	var pm ProductManager
-	game := pnp.New(pm)
+	game := pnp.New(&pm)
 	game.Run(tview.New())
 }
 
@@ -15,14 +15,14 @@ type ProductManager struct {
 	Fired bool
 }
 
-func (p ProductManager) Options(g *pnp.Game) []pnp.Option {
+func (p *ProductManager) Options(g *pnp.Game) []pnp.Option {
 	return []pnp.Option{
 		{
 			Description: "Pay wages",
 			OnSelect: func() pnp.Outcome {
 				if g.Coins < len(g.Players) {
 					p.Fired = true
-					return "Not enough coins to pay wages. PM was fired!"
+					return "Not enough coins to pay wages. Band is bankrupt. PM is fired!"
 				}
 				g.Coins -= len(g.Players)
 				return "Wages paid"
@@ -31,17 +31,17 @@ func (p ProductManager) Options(g *pnp.Game) []pnp.Option {
 	}
 }
 
-func (p ProductManager) String() string {
+func (p *ProductManager) String() string {
 	return "Sir Tan Lee Knot"
 }
 
-func (p ProductManager) AsciiArt() string {
+func (p *ProductManager) AsciiArt() string {
 	return `
  O
 /|\
 / \`
 }
 
-func (p ProductManager) Alive() bool {
+func (p *ProductManager) Alive() bool {
 	return !p.Fired
 }

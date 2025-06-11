@@ -40,7 +40,7 @@ type (
 
 // New returns a new P&P game
 func New(players ...Player) *Game {
-	g := Game{Players: players, Prod: NewProduction(), Coins: 10}
+	g := Game{Players: append(players, NewImmortalPlayer(NewMinion("Bob"))), Prod: NewProduction(), Coins: 10}
 	return &g
 }
 
@@ -64,10 +64,7 @@ func (g *Game) MainLoop(e Engine) {
 	e.SelectOption(g, g.Players[g.CurrentPlayer], func(selected Option) {
 		outcome := selected.Selected()
 		e.RenderOutcome(outcome, func() {
-			g.CurrentPlayer++
-			if g.CurrentPlayer >= len(g.Players) {
-				g.CurrentPlayer = 0
-			}
+			g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
 			g.MainLoop(e)
 		})
 	})
