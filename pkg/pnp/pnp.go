@@ -2,12 +2,16 @@ package pnp
 
 import (
 	_ "embed"
+	"math/rand"
+
+	"github.com/ronna-s/gc-eu-25/pkg/repo"
 )
 
 type (
 	// Game represents a Platforms and Programmers Game
 	// where a band of player will attempt to take on production
 	Game struct {
+		Score          int
 		Players        []Player
 		Prod           ProductionState
 		BandName       string
@@ -20,49 +24,48 @@ type (
 
 	// Player represents a P&P player
 	Player interface {
-		Options(g *Game) []Option
+		PossibleActions(g *Game) []Action
 		AsciiArt() string
 		Alive() bool
 	}
 
 	// Engine represents the game's user interface rendering engine
 	Engine interface {
-		Welcome(cb func(bandName string))
-		Start()
+		Welcome(leaderboard []repo.ScoreEntry, fn func(bandName string))
 		GameOver()
 		GameWon()
 		RenderGame(g *Game)
-		SelectOption(g *Game, player Player, cb func(selected Option))
+		SelectAction(g *Game, player Player, cb func(selected Action))
 		RenderOutcome(outcome Outcome, cb func())
 		PizzaDelivery(cb func())
+		WithOnExit(cb func()) Engine
 	}
 )
 
 // New returns a new P&P game
 func New(players ...Player) *Game {
-	g := Game{Players: append(players, NewImmortalPlayer(NewMinion("Bob"))), Prod: NewProduction(), Coins: 10}
+	g := Game{Players: append(players), Prod: NewProduction(), Coins: 10}
 	return &g
 }
 
 // Run starts a new game
 func (g *Game) Run(e Engine) {
-	g.Welcome(e, func() {
-		g.MainLoop(e)
-	})
-	e.Start()
-}
-func (g *Game) Welcome(e Engine, fn func()) {
-	e.Welcome(func(bandName string) {
+	leaderboard, _ := repo.GetTop(10)
+	e.Welcome(leaderboard, func(bandName string) {
 		g.BandName = bandName
-		fn()
+		e = e.WithOnExit(func() {
+			repo.Persist(repo.ScoreEntry{Score: g.Score, BandName: g.BandName})
+		})
+		g.MainLoop(e)
 	})
 }
 
 // MainLoop kicks off the next players round
 func (g *Game) MainLoop(e Engine) {
+	g.Score = rand.Intn(10000)
 	e.RenderGame(g)
-	e.SelectOption(g, g.Players[g.CurrentPlayer], func(selected Option) {
-		outcome := selected.Selected()
+	e.SelectAction(g, g.Players[g.CurrentPlayer], func(selected Action) {
+		outcome := selected.Selected(g)
 		e.RenderOutcome(outcome, func() {
 			g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
 			g.MainLoop(e)
@@ -70,15 +73,24 @@ func (g *Game) MainLoop(e Engine) {
 	})
 }
 
-type Option struct {
-	OnSelect    func() Outcome
+func allPlayersDead(players []Player) bool {
+	for _, player := range players {
+		if player.Alive() {
+			return false
+		}
+	}
+	return true
+}
+
+type Action struct {
+	OnSelect    func(g *Game) Outcome
 	Description string
 }
 
-func (o Option) String() string {
+func (o Action) String() string {
 	return o.Description
 }
 
-func (o Option) Selected() Outcome {
-	return o.OnSelect()
+func (o Action) Selected(g *Game) Outcome {
+	return o.OnSelect(g)
 }

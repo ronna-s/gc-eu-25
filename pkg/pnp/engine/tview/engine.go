@@ -6,38 +6,44 @@ import (
 	"log"
 	"math/rand"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/IBM/fp-go/option"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	"github.com/ronna-s/gc-eu-25/pkg/pnp"
 	"github.com/ronna-s/gc-eu-25/pkg/pnp/engine"
+	"github.com/ronna-s/gc-eu-25/pkg/repo"
 )
 
 var _ pnp.Engine = &Engine{}
 
 type Engine struct {
 	App       *tview.Application
+	Game      *pnp.Game
 	Pages     *tview.Pages
 	Menu      *tview.List
-	Inventory *tview.TextView
 	Prod      *tview.TextView
 	ProdState pnp.ProductionState
-	mu        sync.Mutex
+	OnExit    func()
 }
 
 func New() *Engine {
 	return &Engine{
-		App:       tview.NewApplication(),
-		Pages:     tview.NewPages(),
-		Menu:      tview.NewList(),
-		Inventory: tview.NewTextView(),
-		Prod:      tview.NewTextView(),
+		App:   tview.NewApplication(),
+		Pages: tview.NewPages(),
+		Menu:  tview.NewList(),
+		Prod:  tview.NewTextView(),
 	}
 }
-func (e *Engine) Start() {
+
+func (e *Engine) WithOnExit(cb func()) pnp.Engine {
+	e.OnExit = cb
+	return e
+}
+
+func (e *Engine) start() {
 	e.Prod.SetText(strings.Repeat("A", 2000)).
 		SetTextColor(tcell.ColorGreen).
 		SetBorder(true).
@@ -49,45 +55,62 @@ func (e *Engine) Start() {
 		time.Sleep(time.Second)
 		for {
 			time.Sleep(time.Millisecond * 30)
-			e.App.QueueUpdate(e.RenderProd)
+			e.App.QueueUpdate(e.renderProd)
 		}
 	}()
 	if err := e.App.SetRoot(e.Pages, true).SetFocus(e.Pages).EnableMouse(true).Run(); err != nil {
 		log.Fatal(err)
 	}
 }
-func (e *Engine) Stop() {
+
+func (e *Engine) stop() {
 	e.App.Stop()
+	if e.OnExit != nil {
+		e.OnExit()
+	}
 }
 
 func (e *Engine) RenderGame(g *pnp.Game) {
+	const pageName = "game"
 	players := g.Players
 	currentPlayer := g.CurrentPlayer
 	e.ProdState = g.Prod
-	const pageName = "main"
+	inventory := tview.NewTextView()
 	e.Pages.RemovePage(pageName)
 	view := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(e.RenderPlayers(g.BandName, players, currentPlayer), 0, 2, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(e.Menu, 0, 1, true).
-			AddItem(e.Inventory, 0, 1, false).
+			AddItem(inventory, 0, 1, false).
 			AddItem(e.Prod, 0, 1, false), 0, 1, true)
-	e.Inventory.Clear()
-	e.Inventory.SetTitle("Inventory").SetBorder(true)
-	e.Inventory.SetText(fmt.Sprintf("Coins: %d", g.Coins))
+	inventory.Clear()
+	inventory.SetTitle("Inventory").SetBorder(true)
+	inventory.SetText(fmt.Sprintf("Coins: %d", g.Coins))
 	e.Pages.AddAndSwitchToPage(pageName, view, true)
 }
 
-func (e *Engine) SelectOption(g *pnp.Game, player pnp.Player, cb func(selected pnp.Option)) {
+func (e *Engine) SelectAction(g *pnp.Game, player pnp.Player, cb func(selected pnp.Action)) {
 	e.Menu.Clear()
-	for i, o := range player.Options(g) {
+	if len(player.PossibleActions(g)) == 0 {
+		e.Menu.AddItem("No actions available", "", 0, nil)
+		e.Menu.SetBorder(true).SetTitle("No actions available")
+		e.Menu.SetSelectedFunc(func(choice int, s string, s2 string, r rune) {
+			cb(pnp.Action{
+				Description: "What are we even doing?",
+				OnSelect: func(*pnp.Game) pnp.Outcome {
+					return "So sad to have no actions against PRODUCTION."
+				},
+			})
+		})
+		return
+	}
+	for i, o := range player.PossibleActions(g) {
 		e.Menu.AddItem(o.String(), "", rune(49+i), nil)
 	}
 	e.Menu.SetCurrentItem(0)
 	e.Menu.SetBorder(true).SetTitle("Select move...")
 	e.Menu.SetSelectedFunc(func(choice int, s string, s2 string, r rune) {
-		option := player.Options(g)[choice]
-		cb(option)
+		cb(player.PossibleActions(g)[choice])
 	})
 }
 
@@ -106,15 +129,28 @@ func (e *Engine) RenderOutcome(outcome pnp.Outcome, cb func()) {
 
 }
 
-type Livable interface {
+type mortal interface {
 	Alive() bool
 }
 
 func alive(p pnp.Player) bool {
-	if livable, ok := p.(Livable); ok {
+	if livable, ok := p.(mortal); ok {
 		return livable.Alive()
 	}
 	return true
+}
+
+func asciiart(p pnp.Player) option.Option[string] {
+	if v, ok := p.(interface{ AsciiArt() string }); ok {
+		return option.Some(v.AsciiArt())
+	}
+	return option.None[string]()
+}
+func stringer(p pnp.Player) option.Option[string] {
+	if v, ok := p.(interface{ String() string }); ok {
+		return option.Some(v.String())
+	}
+	return option.None[string]()
 }
 
 func (e *Engine) RenderPlayers(bandName string, players []pnp.Player, current int) *tview.Flex {
@@ -147,7 +183,7 @@ func (e *Engine) RenderPlayers(bandName string, players []pnp.Player, current in
 
 var Rand = rand.Intn
 
-func (e *Engine) RenderProd() {
+func (e *Engine) renderProd() {
 	var color tcell.Color
 	switch e.ProdState {
 	case pnp.Calm:
@@ -178,7 +214,7 @@ func (e *Engine) GameWon() {
 		SetTextColor(tcell.ColorLime).
 		SetBorder(true).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			e.App.Stop()
+			e.stop()
 		})
 	m.ResizeItem(m.innerFlex, 0, 5)
 	m.innerFlex.ResizeItem(m.modalFlex, 0, 5)
@@ -193,7 +229,7 @@ func (e *Engine) GameOver() {
 		SetTextColor(tcell.ColorLime).
 		SetBorder(true).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			e.App.Stop()
+			e.stop()
 		})
 	m.ResizeItem(m.innerFlex, 0, 3)
 	m.innerFlex.ResizeItem(m.modalFlex, 0, 3)
@@ -220,12 +256,27 @@ func (e *Engine) PizzaDelivery(fn func()) {
 	e.Pages.AddPage(pageName, m, true, true)
 }
 
-func (e *Engine) Welcome(fn func(bandName string)) {
+func (e *Engine) Welcome(leaderboard []repo.ScoreEntry, fn func(bandName string)) {
 	const modalName = "welcome modal"
 	newGameText := tview.NewTextView()
 	newGameText.SetText("A band of developers will attempt to survive against PRODUCTION!")
+	// Game art
 	gameArt := tview.NewTextView()
 	gameArt.SetText(engine.Gamestarted).SetTextColor(tcell.ColorAqua)
+	// Leaderboard (use parameter, with strings.Join)
+	leaderboardText := tview.NewTextView()
+
+	var lines []string
+	for i, entry := range leaderboard {
+		lines = append(lines, fmt.Sprintf("%d. %s - %d", i+1, entry.BandName, entry.Score))
+	}
+	leaderboardText.SetText(strings.Join(lines, "\n")).SetTextColor(tcell.ColorYellow)
+	leaderboardText.SetBorder(true).SetTitle("Leaderboard")
+	// Side by side: game art | leaderboard
+	horizontalFlex := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(gameArt, 0, 2, false).
+		AddItem(leaderboardText, 0, 1, false)
+	// BandName input
 	nameInput := tview.NewInputField().SetLabel("What is the name of your band?  ").SetText("Cool Band").SetFieldTextColor(tcell.ColorBlack).SetFieldBackgroundColor(tcell.ColorDarkCyan).SetFieldWidth(32)
 	nameInput.SetDoneFunc(func(key tcell.Key) {
 		if key != tcell.KeyEnter {
@@ -242,16 +293,15 @@ func (e *Engine) Welcome(fn func(bandName string)) {
 		})
 		e.Pages.AddAndSwitchToPage(modalName, welcomeModal, true)
 	})
-
-	form := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(gameArt, 20, 20, false).
+	// Layout: [gameArt | leaderboard] above, then welcome text, then input
+	form := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(horizontalFlex, 0, 2, false).
 		AddItem(newGameText, 1, 1, false).
 		AddItem(nameInput, 1, 1, true)
-
 	form.SetBorderPadding(0, 0, 20, 0)
 	form.SetBorder(true).SetTitle("New game started!").SetTitleAlign(tview.AlignLeft)
 	e.Pages.AddAndSwitchToPage("load", tview.NewFlex().AddItem(form, 0, 1, true), true)
+	e.start()
 }
 
 type Modal struct {

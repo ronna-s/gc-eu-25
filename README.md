@@ -181,9 +181,31 @@ func DoSomething[T any, PT interface {
 ```
 
 ### Task
-Define the generic heap in heap/heap.go so that cmd/top.go compiles and the tests in heap_test.go are successfully run.
+Introduce a leaderboard to the game in `pkg/pnp/leaderboard.go` that will keep track of the players' scores.
+We will use a generic heap to keep the leaderboard sorted by score.
+
+**Justice to the heap!**
 
 
 ## Lesson 3: Functional Programming
+Is Go a functional programming language?
+No. It's a multi-paradigm language that supports functional programming (to a degree).
+
+_What does it mean?_
+
+Functional programming is a programming paradigm that treats computation as the evaluation of mathematical functions and avoids changing state and mutable data. In Go, we can use functional programming techniques such as first-class functions, higher-order functions, and closures.
+The introduction of generics in Go allows us to write more generic and reusable data types representing functions (pure or otherwise).
+This makes functional programming more accessible in Go, as we can now define functions that operate on different types without losing type safety.
+
+It's also kind of cool!
+
+### Task
+One of the biggest challenges in functional programming is handling IO which causes side-effects. Side effects are bad to funcitonal programming.
+There are several techniques to handle side effects in functional programming. One such way is to maintain an IO monad which maintains a realworld state that represenjts side effects happening in the real world. Our application now maintains the real world making it purely functional.
+
+Wrap our the reads and writes from the leaderboard file in an IO monad, that encapsulates changes in the real world.
 
 ## Lesson 4: Concurrency and Testing 
+
+1. We have a few goroutines in our game that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that they terminate properly.
+2. We are going to introduce graceful shutdown to our game, so that we can stop the game and all the goroutines gracefully while ensuring that if the game ends unexpectedly - the leaderboard remains up to date. (ahhmm, there are no transactions in this code, so really no guarantees but you get the idea.)

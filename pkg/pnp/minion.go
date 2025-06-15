@@ -17,24 +17,24 @@ func (m Minion) AsciiArt() string {
 	return minionArt
 }
 
-func (m Minion) Options(g *Game) []Option {
-	var options []Option
+func (m Minion) PossibleActions(g *Game) []Action {
+	var actions []Action
 	if g.Coins > 0 {
-		options = append(options, Option{
+		actions = append(actions, Action{
 			Description: "Buy a banana and eat it (costs 1 gold coin)",
-			OnSelect: func() Outcome {
+			OnSelect: func(g *Game) Outcome {
 				g.Coins--
 				return "You ate a banana"
 			},
 		})
 	}
-	options = append(options, Option{
+	actions = append(actions, Action{
 		Description: "Add a bug to the code",
-		OnSelect: func() Outcome {
+		OnSelect: func(g *Game) Outcome {
 			return Outcome(g.Prod.Upset())
 		},
 	})
-	return options
+	return actions
 }
 
 func (m Minion) String() string {

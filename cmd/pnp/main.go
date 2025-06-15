@@ -2,24 +2,24 @@ package main
 
 import (
 	"github.com/ronna-s/gc-eu-25/pkg/pnp"
-	"github.com/ronna-s/gc-eu-25/pkg/pnp/engine/tview"
+	engine "github.com/ronna-s/gc-eu-25/pkg/pnp/engine/tview"
 )
 
 func main() {
 	var pm ProductManager
-	game := pnp.New(&pm)
-	game.Run(tview.New())
+	app := pnp.New(&pm)
+	app.Run(engine.New())
 }
 
 type ProductManager struct {
 	Fired bool
 }
 
-func (p *ProductManager) Options(g *pnp.Game) []pnp.Option {
-	return []pnp.Option{
+func (p *ProductManager) PossibleActions(g *pnp.Game) []pnp.Action {
+	return []pnp.Action{
 		{
 			Description: "Pay wages",
-			OnSelect: func() pnp.Outcome {
+			OnSelect: func(g *pnp.Game) pnp.Outcome {
 				if g.Coins < len(g.Players) {
 					p.Fired = true
 					return "Not enough coins to pay wages. Band is bankrupt. PM is fired!"
