@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/IBM/fp-go/option"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
@@ -140,19 +139,6 @@ func alive(p pnp.Player) bool {
 	return true
 }
 
-func asciiart(p pnp.Player) option.Option[string] {
-	if v, ok := p.(interface{ AsciiArt() string }); ok {
-		return option.Some(v.AsciiArt())
-	}
-	return option.None[string]()
-}
-func stringer(p pnp.Player) option.Option[string] {
-	if v, ok := p.(interface{ String() string }); ok {
-		return option.Some(v.String())
-	}
-	return option.None[string]()
-}
-
 func (e *Engine) RenderPlayers(bandName string, players []pnp.Player, current int) *tview.Flex {
 	playersView := tview.NewFlex().SetDirection(tview.FlexRow)
 	playersView.SetTitle(bandName).
@@ -166,7 +152,7 @@ func (e *Engine) RenderPlayers(bandName string, players []pnp.Player, current in
 
 		if alive(p) {
 			art.SetTextColor(tcell.ColorWhite)
-			art.SetText(p.AsciiArt())
+			art.SetText(p.AsciiArt()) //todo: task in functional programming lesson
 		} else {
 			art.SetText(engine.Gravestone).SetTextColor(tcell.ColorPurple)
 		}

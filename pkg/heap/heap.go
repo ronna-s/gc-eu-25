@@ -2,21 +2,6 @@
 // By providing a generic heap we can avoid messy interface conversions and provide a friendly interface
 package heap
 
-type Slice[T any] interface {
-	~[]T
-}
-
-type Item[T any] interface {
-	Less(t T) bool
-}
-type Heap[T Item[T]] []T
-
-func New[T Item[T]](s []T) Heap[T] {
-	h := Heap[T](s)
-	h.Init()
-	return h
-}
-
 func (h Heap[T]) Init() {
 	n := len(h)
 	for i := n/2 - 1; i >= 0; i-- {

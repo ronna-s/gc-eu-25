@@ -36,7 +36,7 @@ func GetTop(n int) ([]ScoreEntry, error) {
 
 func GetAll() ([]ScoreEntry, error) {
 	// Find the CSV file relative to this file
-	csvPath := filepath.Join("pkg", "repo", "leaderboard.csv")
+	csvPath := filepath.Join("pkg", "repo", "allscores.csv")
 	file, err := os.Open(csvPath)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func GetAll() ([]ScoreEntry, error) {
 
 // Persist appends a new leaderboard entry to the CSV, allowing duplicates and not checking for existing entries.
 func Persist(entry ScoreEntry) error {
-	csvPath := filepath.Join("pkg", "pnp", "repo", "leaderboard.csv")
+	csvPath := filepath.Join("pkg", "pnp", "repo", "allscores.csv")
 	file, err := os.OpenFile(csvPath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return err

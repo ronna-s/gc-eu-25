@@ -182,30 +182,69 @@ func DoSomething[T any, PT interface {
 
 ### Task
 Introduce a leaderboard to the game in `pkg/pnp/leaderboard.go` that will keep track of the players' scores.
-We will use a generic heap to keep the leaderboard sorted by score.
+We will define our own generic heap to keep the top leaderboard sorted by score.
 
 **Justice to the heap!**
 
 
 ## Lesson 3: Functional Programming
-Is Go a functional programming language?
-No. It's a multi-paradigm language that supports functional programming (to a degree).
 
-_What does it mean?_
+### What is functional programming?
+Functional programming is the practice of building software by composing pure functions, avoiding shared state, mutable data, and side-effects. It is declarative rather than imperative, and application state flows through pure functions. E.g.:
 
+```go
+fn1(fn2(fn3(someArgs)))
+```
+Instead of:
+
+```go
+res := Proc1(someArgs)
+Proc2(otherArgs, res)
+sideEffects := ReadSideEffects()
+Proc3(sideEffects)
+```
 Functional programming is a programming paradigm that treats computation as the evaluation of mathematical functions and avoids changing state and mutable data. In Go, we can use functional programming techniques such as first-class functions, higher-order functions, and closures.
 The introduction of generics in Go allows us to write more generic and reusable data types representing functions (pure or otherwise).
-This makes functional programming more accessible in Go, as we can now define functions that operate on different types without losing type safety.
+This makes functional programming more accessible in Go, as we can now define functions that operate on different types without losing type safety
 
-It's also kind of cool!
+A limitation of generics with functional programming in Go has to do with the fact that [Go doesn't methods taking type parameters](https://github.com/golang/go/issues/49085) ([explanation](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#No-parameterized-methods)).
+This means that when we opt to work with functional programming, for best design, we should avoid method, but rather think about how to apply functions to our types.
+`
+`### Why use functional programming?
+Functional programming is a powerful tool for building resilient and maintainable software.
+
+It's also kind of cool.
+
+### Is Go a functional programming language?
+
+Not really. Go is a multi-paradigm language that supports procedural, object-oriented, and concurrent programming. However, Go has some functional programming features, such as first-class functions, higher-order functions, and closures.
+
+- Go doesn't provide lazy evaluation, which is a feature of functional programming languages that allows expressions to be evaluated only when needed (so we have to do it ourselves).
+- Go doesn't provide immutable data structures, which are common in functional programming languages.
+- Go doesn't have tail call optimization, which is a feature of functional programming languages that allows recursive functions to be optimized to avoid stack overflow (and also generally good for performance).
+
+### What is TCO (Tail Call Optimization) and why is it important?
+It's the practice of overriding the current stack frame with the next one (we just jump to the last function in the current function), instead of adding a new one.
+It's useful to allow iterations using recursions without causing a stack overflow.
+Go doesn't support tail call optimization for [various reasons](https://github.com/golang/go/issues/22624) ([see also](https://groups.google.com/g/golang-nuts/c/nOS2FEiIAaM/m/miAg83qEn-AJ)), despite some suggestions otherwise online.
+For recursive calls, since the Go stack is managed on the heap, we can still run recursions with a larger stack (but we should prefer loops instead).
+
+### See also:
+- A very cohesive [Functional Programming package for Go by IBM](https://github.com/IBM/FP-GO) and the [video](https://www.youtube.com/watch?v=Jif3jL6DRdw) about it.
+- An Introduction to Functional Programming in Go - Eleanor McHugh [video](https://www.youtube.com/watch?v=OKlhUv8R1ag).
+- Monadic operartions overview (in Haskell - but explains basic concepts) [post](https://www.adit.io/posts/2013-04-17-functors,_applicatives,_and_monads_in_pictures.html)
+
 
 ### Task
-One of the biggest challenges in functional programming is handling IO which causes side-effects. Side effects are bad to funcitonal programming.
-There are several techniques to handle side effects in functional programming. One such way is to maintain an IO monad which maintains a realworld state that represenjts side effects happening in the real world. Our application now maintains the real world making it purely functional.
+Our PM asks that we remove the AsciiArt() method from the Player interface, because it is not used in many engines that people plug into the game.
+In order to do that, we will check at runtime if player implements the AsciiArt() method, and if it does, we will call it, otherwise we will check if it has a String() string method, otherwise check if it has a `Name() string`,
+and if not we will default to `Player #<number>`.
 
-Wrap our the reads and writes from the leaderboard file in an IO monad, that encapsulates changes in the real world.
+To do that we will use functional programming techniques to chain the calls together, for each that doesn't work, we will call the next one until we get a working string.
+
+Note: We don't want to call any consecutive functions, this computation should be lazy.
 
 ## Lesson 4: Concurrency and Testing 
 
-1. We have a few goroutines in our game that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that they terminate properly.
+1. We have a rogue goroutine in our game that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that they terminate properly.
 2. We are going to introduce graceful shutdown to our game, so that we can stop the game and all the goroutines gracefully while ensuring that if the game ends unexpectedly - the leaderboard remains up to date. (ahhmm, there are no transactions in this code, so really no guarantees but you get the idea.)
