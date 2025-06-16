@@ -22,11 +22,17 @@ type (
 
 	Outcome string
 
-	// Player represents a P&P player
-	Player interface {
+	BasePlayer interface {
 		PossibleActions(g *Game) []Action
 		AsciiArt() string
+	}
+	MortalPlayer interface {
 		Alive() bool
+	}
+	// Player represents a P&P player
+	Player interface {
+		BasePlayer
+		MortalPlayer
 	}
 
 	// Engine represents the game's user interface rendering engine
@@ -44,7 +50,7 @@ type (
 
 // New returns a new P&P game
 func New(players ...Player) *Game {
-	g := Game{Players: append(players), Prod: NewProduction(), Coins: 10}
+	g := Game{Players: append(players, NewImmortalPlayer(NewMinion("Bob"))), Prod: NewProduction(), Coins: 10}
 	return &g
 }
 
@@ -67,7 +73,16 @@ func (g *Game) MainLoop(e Engine) {
 	e.SelectAction(g, g.Players[g.CurrentPlayer], func(selected Action) {
 		outcome := selected.Selected(g)
 		e.RenderOutcome(outcome, func() {
-			g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
+			if allPlayersDead(g.Players) {
+				e.GameOver()
+				return
+			}
+			for {
+				g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
+				if g.Players[g.CurrentPlayer].Alive() {
+					break
+				}
+			}
 			g.MainLoop(e)
 		})
 	})
@@ -93,4 +108,18 @@ func (o Action) String() string {
 
 func (o Action) Selected(g *Game) Outcome {
 	return o.OnSelect(g)
+}
+
+type ImmortalPlayer struct {
+	BasePlayer
+}
+
+func NewImmortalPlayer(p BasePlayer) Player {
+	return ImmortalPlayer{
+		BasePlayer: p,
+	}
+}
+
+func (p ImmortalPlayer) Alive() bool {
+	return true
 }
