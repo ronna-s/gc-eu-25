@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-
-	"github.com/ronna-s/gc-eu-25/pkg/heap"
 )
 
 type ScoreEntry struct {
@@ -26,12 +24,7 @@ func GetTop(n int) ([]ScoreEntry, error) {
 	if n > len(scores) {
 		n = len(scores)
 	}
-	h := heap.New(scores)
-	var s2 []ScoreEntry
-	for _ = range n {
-		s2 = append(s2, h.Pop())
-	}
-	return s2, nil
+	return scores[:n], nil
 }
 
 func GetAll() ([]ScoreEntry, error) {
