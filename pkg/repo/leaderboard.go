@@ -19,14 +19,14 @@ func (e ScoreEntry) Less(e2 ScoreEntry) bool {
 }
 
 func GetTop(n int) ([]ScoreEntry, error) {
-	leaderboard, err := GetAll()
+	scores, err := GetAll()
 	if err != nil {
 		return nil, err
 	}
-	if n > len(leaderboard) {
-		n = len(leaderboard)
+	if n > len(scores) {
+		n = len(scores)
 	}
-	h := heap.New(leaderboard)
+	h := heap.New(scores)
 	var s2 []ScoreEntry
 	for _ = range n {
 		s2 = append(s2, h.Pop())

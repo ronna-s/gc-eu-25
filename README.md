@@ -186,7 +186,6 @@ We will define our own generic heap to keep the top leaderboard sorted by score.
 
 **Justice to the heap!**
 
-
 ## Lesson 3: Functional Programming
 
 ### What is functional programming?
@@ -243,6 +242,8 @@ and if not we will default to `Player #<number>`.
 To do that we will use functional programming techniques to chain the calls together, for each that doesn't work, we will call the next one until we get a working string.
 
 Note: We don't want to call any consecutive functions, this computation should be lazy.
+
+**Bonus:** Make the code that reads the scores from the leaderboard in `pkg/pnp/leaderboard.go` functional, using `Left()` and `Right()` functions from github.com/IBM/fp-go package (included in the modules).
 
 ## Lesson 4: Concurrency and Testing 
 
