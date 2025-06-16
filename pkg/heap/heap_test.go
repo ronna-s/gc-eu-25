@@ -1,8 +1,19 @@
 package heap
 
 import (
+	"cmp"
 	"testing"
 )
+
+type OrderedWrapper[T cmp.Ordered] struct {
+	Val T
+}
+
+func (ow OrderedWrapper[T]) Less(other OrderedWrapper[T]) bool {
+	return ow.Val < other.Val
+}
+
+type intHeap = Heap[OrderedWrapper[int]]
 
 func verify(t *testing.T, h intHeap, i int) {
 	t.Helper()

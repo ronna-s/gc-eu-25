@@ -2,6 +2,15 @@
 // By providing a generic heap we can avoid messy interface conversions and provide a friendly interface
 package heap
 
+type Heapable[T any] interface{ Less(t1 T) bool }
+type Heap[T Heapable[T]] []T
+
+func New[T Heapable[T]](s []T) Heap[T] {
+	h := Heap[T](s)
+	h.Init()
+	return h
+}
+
 func (h Heap[T]) Init() {
 	n := len(h)
 	for i := n/2 - 1; i >= 0; i-- {
