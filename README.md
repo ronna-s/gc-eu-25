@@ -246,5 +246,6 @@ Note: We don't want to call any consecutive functions, this computation should b
 
 ## Lesson 4: Concurrency and Testing 
 
-1. We have a rogue goroutine in our game that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that they terminate properly.
+1. We are going to fix some code to make it testable in pkg/concurrency.
+2. We have a rogue goroutine in our game engine that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that it terminates properly.
 2. We are going to introduce graceful shutdown to our game, so that we can stop the game and all the goroutines gracefully while ensuring that if the game ends unexpectedly - the leaderboard remains up to date. (ahhmm, there are no transactions in this code, so really no guarantees but you get the idea.)

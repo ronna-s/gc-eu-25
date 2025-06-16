@@ -47,6 +47,7 @@ func (e *Engine) start() {
 		SetTextColor(tcell.ColorGreen).
 		SetBorder(true).
 		SetTitle(fmt.Sprintf("PRODUCTION is `%s`", e.ProdState))
+	// todo: fix me. Task in concurrency lesson
 	go func() {
 		e.Prod.SetChangedFunc(func() {
 			e.App.Draw()
