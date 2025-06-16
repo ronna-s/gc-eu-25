@@ -40,3 +40,18 @@ func (m Minion) PossibleActions(g *Game) []Action {
 func (m Minion) String() string {
 	return "Minion"
 }
+
+func (m Minion) IsMinion() bool {
+	return true
+}
+
+type minionPlayer interface {
+	isMinion() bool
+}
+
+func isMinion(p Player) bool {
+	if mp, ok := p.(minionPlayer); ok {
+		return mp.isMinion()
+	}
+	return false
+}
