@@ -62,14 +62,14 @@ for instance: `append` takes a slice of a type T and append items of type T to i
 The problem was that the language had generics and could use generic types, but we couldn't define our own.
 
 ### When to use them?
-It was a long time consensus that "real gophers" don't need generics, so much so that around the time the generics draft of 2020 was released, many gophers still said that they are not likely to use them.
+It was a long-time consensus that "real gophers" don't need generics, so much so that around the time the generics draft of 2020 was released, many gophers still said that they are not likely to use them.
 
-Let's understand first the point that they were trying to make.
+Let's first understand the point that they were trying to make.
 
 Consider [this code](https://gist.github.com/Xaymar/7c82ed127c8f1def53075f414a7df153), made using C++.
 We see here generic code (templates) that allows an event to add functions (listeners) to its subscribers.
 Let's ignore for a second that this code adds functions, not objects and let's assume it did take in objects with the function `Handle(e Event)`.
-We don't need generics in Go to make this work because interfaces are implicit. As we saw already in C++ an object has to be aware of it's implementations, this is why to allow plugging-in of functionality we have to use generics in C++ (and in Java).
+We don't need generics in Go to make this work because interfaces are implicit. As we saw already in C++ an object has to be aware of its implementations, this is why to allow plugging-in of functionality we have to use generics in C++ (and in Java).
 
 In Go this code would look something like [this](https://go.dev/play/p/Tqm_Hb0vcZb):
 
@@ -101,7 +101,7 @@ func main() {
 **We didn't need generics at all!**
 
 However, there are cases in Go where we have to use generics and until recently we used code generation for.
-Those cases are when the behavior is derived from the type or leaks to the type's behavior:
+Those cases are when the behavior is derived from the type or leaks into the type's behavior:
 
 For example:
 The linked list
@@ -131,7 +131,7 @@ import "fmt"
 type A int
 
 // Add takes any type with underlying type int 
-func Add[T ~int](i T, j T) T { 
+func Add[T ~int](i, j T) T { 
   return i + j
 }
 
@@ -144,9 +144,9 @@ Of course, you might not be likely to use linked lists in your day to day, but y
 1. Repositories, database models, data structures that are type specific, etc.
 2. Event handlers and processors that act differently based on the type.
 3. The [concurrent map in the sync package](https://pkg.go.dev/sync#Map) which uses the empty interface.
-4. [The heap](https://pkg.go.dev/container/heap#example-package-IntHeap)
+4. [The heap container](https://pkg.go.dev/container/heap#example-package-IntHeap)
 
-The common thread to these examples is that before generics we had to trade generalizing certain behavior for type safety (or generate code to do so), now we can have both.
+The common thread to these examples is that, whereas before generics we had to trade generalizing certain behavior for type safety (or generate code to do so), now we can have both.
 
 So, how does it work, exactly?
 
@@ -156,18 +156,16 @@ Constraints are defined using interfaces.
 2. If our codes expects a type with a subset of behaviors, we use an interface with the methods that we need (very similarly to using regular interfaces).
 3. If our code expects a type with an underlying type of a certain type, we use the `~` operator. e.g. `interface{~int}`.
 4. If our code expects an exact type - we use the type name. e.g. `inteface{string}`.
-5. We can also union types using the `|` operator. e.g. `interface{int|string}`. This constraint will allow using + on strings and ints alike.
+5. We can also union types using the `|` operator. e.g. `interface{int|string}`. This constraint will allow using `+` on strings and ints alike.
 
 Sometimes we need to get more creative with generics and express dependencies between types. For instance, when the pointer to a type implements a constraint (the interface), but we also need the type itself.
 For instance, we can expect a type T and another type `interface{~[]T}` which is any type with an underlying type of a slice of T.
-We can expect a type which is a function that returns T like so: `interface{~func() T}`.'
+We can express a type which is a function that returns T like so: `interface{~func() T}`.'
 
 Consider the following example where we need to populate a variable of type T, but the interface is implemented by its pointer.
-PT is defined to be a pointer to T (a dependency on the previous generic type) and we provide also the interface methods that it implements (by embedding proto.Message).:
+PT is defined to be a pointer to T (a dependency on the previous generic type) and we also provide the interface methods that it implements (by embedding proto.Message):
 ```go
-import (
-	"google.golang.org/protobuf/proto"
-)
+import "google.golang.org/protobuf/proto"
 
 func DoSomething[T any, PT interface {
 	proto.Message
@@ -204,21 +202,36 @@ Proc3(sideEffects)
 ```
 Functional programming is a programming paradigm that treats computation as the evaluation of mathematical functions and avoids changing state and mutable data. In Go, we can use functional programming techniques such as first-class functions, higher-order functions, and closures.
 The introduction of generics in Go allows us to write more generic and reusable data types representing functions (pure or otherwise).
-This makes functional programming more accessible in Go, as we can now define functions that operate on different types without losing type safety
+This makes functional programming more accessible in Go, as we can now define functions that operate on different types without losing type safety.
 
-A limitation of generics with functional programming in Go has to do with the fact that [Go doesn't methods taking type parameters](https://github.com/golang/go/issues/49085) ([explanation](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#No-parameterized-methods)).
-This means that when we opt to work with functional programming, for best design, we should avoid method, but rather think about how to apply functions to our types.
-`
-`### Why use functional programming?
+A limitation of generics with functional programming in Go has to do with the fact that [Go doesn't support methods taking type parameters](https://github.com/golang/go/issues/49085) ([explanation](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#No-parameterized-methods)).
+This means that when we opt to work with functional programming, for best design, we should avoid methods, but rather think about how to apply functions to our types.
+
+### Why use functional programming?
 Functional programming is a powerful tool for building resilient and maintainable software.
 
-It's also kind of cool.
+It's hard to reason about a program or function when its result depends on
+state that can change. As a very simple example, consider this impure function:
+```
+var g int
+
+func addg(x int) int { return x + g}
+```
+What does `addg(1)` return? The answer depends on the value of `g`, which itself
+can depend on anything in the program.
+By contrast, it's easy to figure out what the pure version returns:
+```
+func add(x, y int) int { return x + y}
+```
+Everything you need is right there in the function itself.
+
+Functional programming is also kind of cool.
 
 ### Is Go a functional programming language?
 
 Not really. Go is a multi-paradigm language that supports procedural, object-oriented, and concurrent programming. However, Go has some functional programming features, such as first-class functions, higher-order functions, and closures.
 
-- Go doesn't provide lazy evaluation, which is a feature of functional programming languages that allows expressions to be evaluated only when needed (so we have to do it ourselves).
+- Go doesn't provide lazy evaluation, which is a feature of some functional programming languages that allows expressions to be evaluated only when needed. (So we have to do lazy evaluation ourselves).
 - Go doesn't provide immutable data structures, which are common in functional programming languages.
 - Go doesn't have tail call optimization, which is a feature of functional programming languages that allows recursive functions to be optimized to avoid stack overflow (and also generally good for performance).
 
@@ -248,5 +261,5 @@ Note: We don't want to call any consecutive functions, this computation should b
 ## Lesson 4: Concurrency and Testing 
 
 1. We are going to fix some code to make it testable in pkg/concurrency.
-2. We have a rogue goroutine in our game engine that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to them to ensure that it terminates properly.
+2. We have a rogue goroutine in our game engine that nobody (i.e. me) bothered to keep track of and test, we are going to introduce some tests to ensure that it terminates properly.
 2. We are going to introduce graceful shutdown to our game, so that we can stop the game and all the goroutines gracefully while ensuring that if the game ends unexpectedly - the leaderboard remains up to date. (ahhmm, there are no transactions in this code, so really no guarantees but you get the idea.)
